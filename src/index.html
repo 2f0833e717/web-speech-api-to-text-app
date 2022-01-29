@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Web Speech API to Text App</title>
+    <script>
+        
+        var flag_speech = 0;
+		var results;
+		var results_contents = "";
+		var reload_counter = 0;
+		var reload_lenhth = 0;
+        const reload_timeout = 10000;  // 指定秒後に再実行 1000 ms = 1 sec
+		var run_timer;
+        
+        setInterval(count_run_timer,1000);
+        
+        function count_run_timer(){
+            const date = new Date();
+            run_timer = "[" +
+                ('0' + date.getHours()).slice(-2) + ':' + 
+                ('0' + date.getMinutes()).slice(-2) + ':' + 
+                ('0' + date.getSeconds()).slice(-2) + "]";
+            // console.log(run_timer);
+        }
+        
+        function reload_timer() {
+	        clearTimeout();
+            reload_counter ++;
+            reload_lenhth = document.getElementById('result_text').innerHTML.length;
+            // console.log("reload_counter: " + reload_counter + " innerHTML.length: " + document.getElementById('result_text').innerHTML.length);
+            
+	        setTimeout(function(){
+	            // console.log("reload_timeout reload " + reload_timeout / 1000 + " sec");
+                // console.log("results: " + results);
+                // 初期化対策リロード
+                if (results == undefined){
+                    console.log("初期化対策リロード");
+                    web_speech_api_to_text();}
+                // 空欄のためリロード
+                if (document.getElementById('result_text').innerHTML.length == 1){
+                    console.log("空欄のためリロード");
+                    web_speech_api_to_text();}
+                // フリーズ、聞き取れないためリロード
+                if (document.getElementById('result_text').innerHTML.length == reload_lenhth){
+                    console.log("フリーズ、聞き取れないためリロード");
+                    // result_txt reset
+                    document.getElementById('result_text').innerHTML = "";
+                    web_speech_api_to_text();}
+            }, reload_timeout);
+		}
+		
+        function web_speech_api_to_text() {
+            window.SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
+            recognition = new webkitSpeechRecognition();
+	        // recognition.lang = 'ja';
+	        recognition.interimResults = true;
+	        recognition.continuous = true;
+            flag_speech = 0;
+            recognition.start();
+            if (reload_counter < 1){document.getElementById('status').innerHTML = "起動中";}
+            
+            recognition.onsoundstart = function() {
+                document.getElementById('status').innerHTML = "認識中";
+                reload_timer();};
+            recognition.onnomatch = function() {
+                document.getElementById('status').innerHTML = "もう一度試してください";
+                web_speech_api_to_text();};
+            recognition.onerror = function() {
+                document.getElementById('status').innerHTML = "エラー、フリーズ対策、聞き取れないためリロード";
+                if(flag_speech == 0)
+                web_speech_api_to_text();};
+            recognition.onsoundend = function() {
+                document.getElementById('status').innerHTML = "停止中";
+                web_speech_api_to_text();};
+            
+            // console.log("recognition.onresult:"+ recognition.onresult);
+            recognition.onresult = function(event) {
+                results = event.results;
+                for (var i = event.resultIndex; i < results.length; i++) {
+                    if (results[i].isFinal){
+                        results_contents += run_timer + "\r\n" + results[i][0].transcript + "\r\n\r\n";
+                        document.getElementById('sum_text').innerHTML = results_contents;
+                        var obj = document.getElementById('sum_text');obj.scrollTop = obj.scrollHeight;
+                        console.log("results[i][0].transcript;:"+ results[i][0].transcript);
+                        web_speech_api_to_text();}
+                    else{
+                        document.getElementById('result_text').innerHTML = results[i][0].transcript;
+                        // console.log("results[i][0].transcript;:"+ results[i][0].transcript);
+                        flag_speech = 1;
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+	<textarea id="sec_info" cols="80" rows="5">
+■プライバシーポリシーとか
+・本アプリはGoogleAndroidの音声認識機能APIを利用したWebアプリケーションです。
+・入力された音声データはGoogleサーバーに送信されます。
+・オフラインでは実行できません。
+・無料です。広告無しです。作者にデータ飛びません。
+    </textarea>
+	<br>
+    <input type="button" onClick="web_speech_api_to_text();" value="音声to文字(自動実行)">
+	<br>
+	<textarea id="status" cols="80" rows="2"></textarea>
+	<br>
+	<textarea id="result_text" cols="80" rows="10"></textarea>
+	<br>
+	<textarea id="sum_text" cols="80" rows="30"></textarea>
+	<br>
+    <textarea id="how_to_info" cols="80" rows="12">
+■使い方
+・日本語はテスト済み。（他の言語は不明）
+・マイクをオンにしてください。
+・音声データをマイクに入力します。
+  （例）あなたの声をマイクに入力します。
+  （例）Youtubeなどの動画をスピーカーで再生します。
+・音声の書き起こしを実行します。
+・テキストエリア（全体）をコピーペーストして自由に使います。
+
+■もし動かなくなったら
+・テキストデータは消えるのでテキストエディタなどに退避します。
+  Webページをリロードしてください（F5）
+・女性ニュースアナウンサーはかなりいいです。
+
+    </textarea>
+	<br>
+    <textarea id="sample_info" cols="80" rows="12">
+■参考資料
+// サンプル音声動画
+https://www.google.com/search?q=news&tbm=vid
+
+// 参考サイト
+https://developer.mozilla.org/ja/docs/Web/API/Web_Speech_API
+
+https://mekou.com/linux-magazine/javascript%E3%81%A7%E7%8F%BE%E5%9C%A8%E6%99%82%E5%88%BB%E3%82%92yyyymmddhhmmss%E3%81%A7%E5%87%BA%E5%8A%9B%E3%81%99%E6%96%B9%E6%B3%95/
+
+https://gray-code.com/javascript/execute-processing-periodically/#:~:text=JavaScript%20%E3%82%B3%E3%83%BC%E3%83%89%E4%BE%8B&text=%2F%2F%201%E7%A7%92%E3%81%94%E3%81%A8%E3%81%AB,%22)%3B%20%7D%2C%203000)%3B
+
+https://monomonotech.jp/kurage/assets/scripts/iot/webspeechapi_voice_recognition/
+
+	</textarea>
+	<br>
+    <textarea id="app_info" cols="80" rows="12">
+■作った人
+https://github.com/2f0833e717
+
+■ソース
+もってけセーラー服 Ctrl + U
+
+■更新情報
+2022/01/30 v1.0.0リリース
+・Webアプリケーションをデプロイ
+・API停止時自動リロード機能追加
+・API取得文字連結エリア追加
+・もろもろガード節処理追加
+・Webサイト閲覧時自動実行機能追加
+・API実行時刻追記機能追加
+・参考サイトを追記
+・自動でスクロールバーが下に移動するように修正
+
+	</textarea>
+	<br>
+    <script>web_speech_api_to_text();</script>
+</body>
+</html>
